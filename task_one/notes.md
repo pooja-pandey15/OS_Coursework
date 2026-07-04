@@ -45,3 +45,22 @@
 - Calculated turnaround time (completion time) and waiting time (turnaround -
   burst time) per process, plus averages (13.50 waiting, 20.00 turnaround) -
   standard metrics for evaluating scheduling algorithm performance.
+
+
+## Stage 5: Deadlock demonstration and prevention
+- Created two mutexes (mutex_A, mutex_B) and two threads that each need both.
+- UNSAFE version: Thread A locks A then requests B; Thread B locks B then requests
+  A (opposite order). This created a circular wait - each thread held one lock
+  the other needed, so both blocked indefinitely.
+- Used pthread_mutex_timedlock (3 second timeout) instead of a plain lock, purely
+  so the demo could detect and report the deadlock instead of freezing forever -
+  this doubles as a real-world deadlock DETECTION technique, separate from
+  prevention.
+- Confirmed deadlock: Thread A timed out waiting for mutex_B while Thread B held it
+  waiting for mutex_A.
+- SAFE version: changed Thread B to acquire locks in the SAME order as Thread A
+  (mutex_A first, then mutex_B). This removes the circular wait condition -
+  one of the 4 necessary conditions for deadlock (mutual exclusion, hold-and-wait,
+  no preemption, circular wait). Both threads completed successfully with no
+  timeout, proving consistent lock ordering is an effective, low-cost prevention
+  strategy.

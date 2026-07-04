@@ -1,79 +1,104 @@
 /*
  * scheduler.c
  * Task 1: Process Management and Threading
- * Stage 4 - Round-robin scheduler simulation
+ * Stage 5 - Deadlock demonstration and prevention
  */
 
 #include <stdio.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <time.h>
 
-#define NUM_PROCESSES 4
-#define QUANTUM 3   // each process gets 3 units of CPU time per turn
+pthread_mutex_t mutex_A;
+pthread_mutex_t mutex_B;
 
-typedef struct {
-    int pid;              // process ID
-    int burst_time;       // total CPU time this process still needs
-    int total_burst_time; // original burst time, kept for reporting
-    int waiting_time;
-    int turnaround_time;
-} Process;
+// Set to 1 to run the UNSAFE version (inconsistent lock order -> can deadlock)
+// Set to 0 to run the SAFE version (consistent lock order -> no deadlock)
+#define UNSAFE_MODE 0
+
+// Helper: lock a mutex with a timeout, so our demo never hangs forever.
+// Returns 0 on success, non-zero if it timed out waiting (a sign of deadlock).
+int lock_with_timeout(pthread_mutex_t *m, int seconds) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += seconds;
+    return pthread_mutex_timedlock(m, &ts);
+}
+
+void *thread_A(void *arg) {
+    printf("Thread A: locking mutex_A...\n");
+    pthread_mutex_lock(&mutex_A);
+    printf("Thread A: locked mutex_A. Sleeping to widen the race window...\n");
+    sleep(1); // gives Thread B time to lock mutex_B, setting up the deadlock
+
+    printf("Thread A: trying to lock mutex_B...\n");
+    if (lock_with_timeout(&mutex_B, 3) == 0) {
+        printf("Thread A: locked mutex_B. Working...\n");
+        pthread_mutex_unlock(&mutex_B);
+    } else {
+        printf("Thread A: TIMED OUT waiting for mutex_B -> deadlock detected!\n");
+    }
+
+    pthread_mutex_unlock(&mutex_A);
+    return NULL;
+}
+
+void *thread_B(void *arg) {
+#if UNSAFE_MODE
+    printf("Thread B: locking mutex_B...\n");
+    pthread_mutex_lock(&mutex_B);
+    printf("Thread B: locked mutex_B. Sleeping to widen the race window...\n");
+    sleep(1);
+
+    printf("Thread B: trying to lock mutex_A...\n");
+    if (lock_with_timeout(&mutex_A, 3) == 0) {
+        printf("Thread B: locked mutex_A. Working...\n");
+        pthread_mutex_unlock(&mutex_A);
+    } else {
+        printf("Thread B: TIMED OUT waiting for mutex_A -> deadlock detected!\n");
+    }
+    pthread_mutex_unlock(&mutex_B);
+#else
+    // SAFE VERSION: Thread B acquires locks in the SAME order as Thread A
+    // (mutex_A first, then mutex_B). This consistent ordering removes the
+    // circular wait condition required for deadlock.
+    printf("Thread B: locking mutex_A...\n");
+    pthread_mutex_lock(&mutex_A);
+    printf("Thread B: locked mutex_A. Sleeping to widen the race window...\n");
+    sleep(1);
+
+    printf("Thread B: trying to lock mutex_B...\n");
+    pthread_mutex_lock(&mutex_B);
+    printf("Thread B: locked mutex_B. Working...\n");
+    pthread_mutex_unlock(&mutex_B);
+
+    pthread_mutex_unlock(&mutex_A);
+#endif
+    return NULL;
+}
 
 int main() {
-    Process processes[NUM_PROCESSES] = {
-        {1, 10, 10, 0, 0},
-        {2, 5,  5,  0, 0},
-        {3, 8,  8,  0, 0},
-        {4, 3,  3,  0, 0}
-    };
+    pthread_t tA, tB;
 
-    int time = 0;                 // simulation clock
-    int remaining_processes = NUM_PROCESSES;
+    pthread_mutex_init(&mutex_A, NULL);
+    pthread_mutex_init(&mutex_B, NULL);
 
-    printf("=== Round-Robin Scheduler Simulation ===\n");
-    printf("Quantum: %d units\n\n", QUANTUM);
+#if UNSAFE_MODE
+    printf("=== Running UNSAFE version (inconsistent lock order) ===\n\n");
+#else
+    printf("=== Running SAFE version (consistent lock order) ===\n\n");
+#endif
 
-    // Keep cycling through processes until all have finished (burst_time reaches 0)
-    while (remaining_processes > 0) {
-        for (int i = 0; i < NUM_PROCESSES; i++) {
-            if (processes[i].burst_time > 0) {
-                // Determine how long this process runs THIS turn:
-                // either a full quantum, or whatever's left if less than a quantum remains
-                int run_time = (processes[i].burst_time > QUANTUM) ? QUANTUM : processes[i].burst_time;
+    pthread_create(&tA, NULL, thread_A, NULL);
+    pthread_create(&tB, NULL, thread_B, NULL);
 
-                printf("Time %d: Process %d runs for %d units\n", time, processes[i].pid, run_time);
+    pthread_join(tA, NULL);
+    pthread_join(tB, NULL);
 
-                time += run_time;
-                processes[i].burst_time -= run_time;
+    printf("\nMain: both threads finished.\n");
 
-                if (processes[i].burst_time == 0) {
-                    // Process just finished - record its turnaround time
-                    processes[i].turnaround_time = time;
-                    remaining_processes--;
-                    printf("         -> Process %d completed at time %d\n", processes[i].pid, time);
-                }
-            }
-        }
-    }
-
-    // Calculate waiting time for each process: turnaround time minus its total burst time
-    printf("\n=== Summary ===\n");
-    printf("PID\tBurst\tTurnaround\tWaiting\n");
-
-    float total_waiting = 0, total_turnaround = 0;
-
-    for (int i = 0; i < NUM_PROCESSES; i++) {
-        processes[i].waiting_time = processes[i].turnaround_time - processes[i].total_burst_time;
-        printf("%d\t%d\t%d\t\t%d\n",
-               processes[i].pid,
-               processes[i].total_burst_time,
-               processes[i].turnaround_time,
-               processes[i].waiting_time);
-
-        total_waiting += processes[i].waiting_time;
-        total_turnaround += processes[i].turnaround_time;
-    }
-
-    printf("\nAverage Waiting Time:    %.2f\n", total_waiting / NUM_PROCESSES);
-    printf("Average Turnaround Time: %.2f\n", total_turnaround / NUM_PROCESSES);
+    pthread_mutex_destroy(&mutex_A);
+    pthread_mutex_destroy(&mutex_B);
 
     return 0;
 }
