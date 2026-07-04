@@ -32,3 +32,16 @@
   OS concept.
 - Cleaned up the mutex with pthread_mutex_destroy once no longer needed, to avoid
   resource leaks.
+
+
+## Stage 4: Round-robin scheduler simulation
+- Simulated 4 processes with different burst times (10, 5, 8, 3 units) using a
+  fixed quantum of 3 units.
+- Each process runs for min(remaining burst time, quantum) per turn, then moves
+  to the back of the cycle if not yet finished.
+- Verified fairness property: Process 4 (shortest job, 3 units) completed first
+  (at time 12) despite starting last, because round-robin gives every process a
+  turn rather than running jobs to completion in arrival order.
+- Calculated turnaround time (completion time) and waiting time (turnaround -
+  burst time) per process, plus averages (13.50 waiting, 20.00 turnaround) -
+  standard metrics for evaluating scheduling algorithm performance.

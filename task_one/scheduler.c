@@ -1,72 +1,79 @@
 /*
  * scheduler.c
  * Task 1: Process Management and Threading
- * Stage 3 - Fixing the race condition using a mutex
- *
- * Author: Pooja Pandey
- * Student ID: <your ID>
- * Date: 3 July 2026
+ * Stage 4 - Round-robin scheduler simulation
  */
 
 #include <stdio.h>
-#include <pthread.h>
-#include <unistd.h>
 
-#define NUM_THREADS 3
-#define INCREMENTS_PER_THREAD 100000
+#define NUM_PROCESSES 4
+#define QUANTUM 3   // each process gets 3 units of CPU time per turn
 
-int shared_counter = 0;
-
-// A mutex is a lock. Only one thread can "hold" it at a time.
-// It must be initialized before use.
-pthread_mutex_t counter_lock;
-
-void *worker(void *arg) {
-    int thread_id = *(int *)arg;
-
-    for (int i = 0; i < INCREMENTS_PER_THREAD; i++) {
-        pthread_mutex_lock(&counter_lock);   // acquire the lock - blocks if another thread holds it
-        shared_counter++;                    // critical section: only one thread executes this at a time
-        pthread_mutex_unlock(&counter_lock); // release the lock so another thread can proceed
-    }
-
-    printf("Thread %d: finished incrementing\n", thread_id);
-    return NULL;
-}
+typedef struct {
+    int pid;              // process ID
+    int burst_time;       // total CPU time this process still needs
+    int total_burst_time; // original burst time, kept for reporting
+    int waiting_time;
+    int turnaround_time;
+} Process;
 
 int main() {
-    pthread_t threads[NUM_THREADS];
-    int thread_ids[NUM_THREADS];
+    Process processes[NUM_PROCESSES] = {
+        {1, 10, 10, 0, 0},
+        {2, 5,  5,  0, 0},
+        {3, 8,  8,  0, 0},
+        {4, 3,  3,  0, 0}
+    };
 
-    // Initialize the mutex before any thread uses it.
-    // NULL means default mutex attributes.
-    pthread_mutex_init(&counter_lock, NULL);
+    int time = 0;                 // simulation clock
+    int remaining_processes = NUM_PROCESSES;
 
-    printf("Main: starting %d threads, each incrementing %d times (WITH mutex protection)\n",
-           NUM_THREADS, INCREMENTS_PER_THREAD);
+    printf("=== Round-Robin Scheduler Simulation ===\n");
+    printf("Quantum: %d units\n\n", QUANTUM);
 
-    for (int i = 0; i < NUM_THREADS; i++) {
-        thread_ids[i] = i;
-        pthread_create(&threads[i], NULL, worker, &thread_ids[i]);
+    // Keep cycling through processes until all have finished (burst_time reaches 0)
+    while (remaining_processes > 0) {
+        for (int i = 0; i < NUM_PROCESSES; i++) {
+            if (processes[i].burst_time > 0) {
+                // Determine how long this process runs THIS turn:
+                // either a full quantum, or whatever's left if less than a quantum remains
+                int run_time = (processes[i].burst_time > QUANTUM) ? QUANTUM : processes[i].burst_time;
+
+                printf("Time %d: Process %d runs for %d units\n", time, processes[i].pid, run_time);
+
+                time += run_time;
+                processes[i].burst_time -= run_time;
+
+                if (processes[i].burst_time == 0) {
+                    // Process just finished - record its turnaround time
+                    processes[i].turnaround_time = time;
+                    remaining_processes--;
+                    printf("         -> Process %d completed at time %d\n", processes[i].pid, time);
+                }
+            }
+        }
     }
 
-    for (int i = 0; i < NUM_THREADS; i++) {
-        pthread_join(threads[i], NULL);
+    // Calculate waiting time for each process: turnaround time minus its total burst time
+    printf("\n=== Summary ===\n");
+    printf("PID\tBurst\tTurnaround\tWaiting\n");
+
+    float total_waiting = 0, total_turnaround = 0;
+
+    for (int i = 0; i < NUM_PROCESSES; i++) {
+        processes[i].waiting_time = processes[i].turnaround_time - processes[i].total_burst_time;
+        printf("%d\t%d\t%d\t\t%d\n",
+               processes[i].pid,
+               processes[i].total_burst_time,
+               processes[i].turnaround_time,
+               processes[i].waiting_time);
+
+        total_waiting += processes[i].waiting_time;
+        total_turnaround += processes[i].turnaround_time;
     }
 
-    int expected = NUM_THREADS * INCREMENTS_PER_THREAD;
-
-    printf("\nExpected final value: %d\n", expected);
-    printf("Actual final value:   %d\n", shared_counter);
-
-    if (shared_counter == expected) {
-        printf(">> Correct! Mutex successfully prevented the race condition.\n");
-    } else {
-        printf(">> Unexpected: mismatch still occurred (should not happen with correct locking).\n");
-    }
-
-    // Clean up the mutex once we're done with it - good practice, avoids resource leaks.
-    pthread_mutex_destroy(&counter_lock);
+    printf("\nAverage Waiting Time:    %.2f\n", total_waiting / NUM_PROCESSES);
+    printf("Average Turnaround Time: %.2f\n", total_turnaround / NUM_PROCESSES);
 
     return 0;
 }
