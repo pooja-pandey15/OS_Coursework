@@ -1,7 +1,11 @@
 /*
  * scheduler.c
  * Task 1: Process Management and Threading
- * Stage 2 - Demonstrating a race condition (unprotected shared counter)
+ * Stage 3 - Fixing the race condition using a mutex
+ *
+ * Author: Pooja Pandey
+ * Student ID: <your ID>
+ * Date: 3 July 2026
  */
 
 #include <stdio.h>
@@ -9,17 +13,21 @@
 #include <unistd.h>
 
 #define NUM_THREADS 3
-#define INCREMENTS_PER_THREAD 100000  // large number so the race condition becomes visible
+#define INCREMENTS_PER_THREAD 100000
 
-// Shared resource - every thread reads and writes this SAME variable.
-// Deliberately NOT protected yet, so we can observe the problem.
 int shared_counter = 0;
+
+// A mutex is a lock. Only one thread can "hold" it at a time.
+// It must be initialized before use.
+pthread_mutex_t counter_lock;
 
 void *worker(void *arg) {
     int thread_id = *(int *)arg;
 
     for (int i = 0; i < INCREMENTS_PER_THREAD; i++) {
-        shared_counter++;   // NOT atomic! This is read -> add 1 -> write, in 3 separate steps.
+        pthread_mutex_lock(&counter_lock);   // acquire the lock - blocks if another thread holds it
+        shared_counter++;                    // critical section: only one thread executes this at a time
+        pthread_mutex_unlock(&counter_lock); // release the lock so another thread can proceed
     }
 
     printf("Thread %d: finished incrementing\n", thread_id);
@@ -30,7 +38,11 @@ int main() {
     pthread_t threads[NUM_THREADS];
     int thread_ids[NUM_THREADS];
 
-    printf("Main: starting %d threads, each incrementing %d times\n",
+    // Initialize the mutex before any thread uses it.
+    // NULL means default mutex attributes.
+    pthread_mutex_init(&counter_lock, NULL);
+
+    printf("Main: starting %d threads, each incrementing %d times (WITH mutex protection)\n",
            NUM_THREADS, INCREMENTS_PER_THREAD);
 
     for (int i = 0; i < NUM_THREADS; i++) {
@@ -47,12 +59,14 @@ int main() {
     printf("\nExpected final value: %d\n", expected);
     printf("Actual final value:   %d\n", shared_counter);
 
-    if (shared_counter != expected) {
-        printf(">> Race condition detected! Lost %d increments due to unsynchronized access.\n",
-               expected - shared_counter);
+    if (shared_counter == expected) {
+        printf(">> Correct! Mutex successfully prevented the race condition.\n");
     } else {
-        printf(">> No race condition observed this run (possible but unlikely at this scale).\n");
+        printf(">> Unexpected: mismatch still occurred (should not happen with correct locking).\n");
     }
+
+    // Clean up the mutex once we're done with it - good practice, avoids resource leaks.
+    pthread_mutex_destroy(&counter_lock);
 
     return 0;
 }
