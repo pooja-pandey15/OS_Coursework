@@ -4,11 +4,12 @@
 This program demonstrates multi-threaded process management concepts in C using
 POSIX threads (pthreads). It is split into two parts:
 
-1. **Round-robin task scheduler simulation** - 3 worker threads take turns
-   (strict rotation, enforced with a condition variable) claiming and completing
-   tasks from a shared queue. Access to shared data is protected by a mutex.
-2. **Deadlock prevention demonstration** - two threads each require two mutexes.
-   Consistent lock acquisition order across both threads prevents deadlock.
+1. **Round-robin task scheduler simulation** - "3 printer threads take turns
+ (strict rotation, enforced with a condition variable) picking up and 
+completing print jobs from a shared queue". Access to shared data is protected
+ by a mutex.
+2. **Deadlock prevention demonstration** -"two printers each require two 
+shared resources (a paper tray and a toner cartridge)"
 
 ## Concepts demonstrated
 - Thread creation and synchronization (`pthread_create`, `pthread_join`)
