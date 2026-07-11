@@ -22,3 +22,8 @@ Ran it 3 times, got exactly 200000 every time. Fixed.
 Turn number wraps back to 0 after printer 2 using turn % printers.
 This is a simple version, no threads here, just simulating the turn order.
 
+## 5_deadlock.c
+Two printers, two shared things (paper and toner).
+Unsafe: A locks paper then wants toner, B locks toner then wants paper at the same time. Both get stuck forever (used timeout command to stop it after 5 sec since it would freeze otherwise).
+Safe: made B lock paper first too, same order as A. Now B just waits its turn, no deadlock.
+Switched between the two by commenting/uncommenting #define SAFE 1 at the top.
