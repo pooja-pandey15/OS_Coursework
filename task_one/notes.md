@@ -16,3 +16,9 @@ so threads can overlap and lose updates.
 Same as before but added a mutex lock around jobs_done++.
 Now only one thread can touch jobs_done at a time.
 Ran it 3 times, got exactly 200000 every time. Fixed.
+
+## 4_round_robin.c
+3 printers take turns, one job each, round and round until all 9 jobs are done.
+Turn number wraps back to 0 after printer 2 using turn % printers.
+This is a simple version, no threads here, just simulating the turn order.
+
