@@ -4,3 +4,11 @@
 Made 3 threads, each one is a "printer" that just prints a start and done message.
 Order of output changes each run because threads run independently,
  not one after another.
+
+## 2_race_condition.c
+Two threads both add to jobs_done at the same time, no lock.
+Ran it 3 times, got 3 different wrong numbers (128927, 100131, 150272) instead of 
+200000.
+This happens because jobs_done++ is not one step, it's read-add-write, 
+so threads can overlap and lose updates.
+
