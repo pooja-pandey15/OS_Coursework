@@ -1,56 +1,40 @@
 # Task 1: Process Management and Threading
 
-## Overview
-This program demonstrates multi-threaded process management concepts in C using
-POSIX threads (pthreads). It is split into two parts:
+Simple examples showing threads, race conditions, mutex locks, round robin scheduling, and deadlock.
+Scenario used: printers sharing print jobs.
 
-1. **Round-robin task scheduler simulation** - "3 printer threads take turns
- (strict rotation, enforced with a condition variable) picking up and 
-completing print jobs from a shared queue". Access to shared data is protected
- by a mutex.
-2. **Deadlock prevention demonstration** -"two printers each require two 
-shared resources (a paper tray and a toner cartridge)"
+## Files
 
-## Concepts demonstrated
-- Thread creation and synchronization (`pthread_create`, `pthread_join`)
-- Mutex locking to prevent race conditions (`pthread_mutex_t`)
-- Condition variables for turn-based coordination (`pthread_cond_t`)
-- Round-robin scheduling simulation
-- Deadlock avoidance via consistent lock ordering
+- 1_threads.c - creates 3 threads (printers), each prints a message
+- 2_race_condition.c - two threads update a shared counter with no protection, shows wrong results
+- 3_mutex_fix.c - same as above but with a mutex lock, shows correct results
+- 4_round_robin.c - simulates 3 printers taking turns on a job queue
+- 5_deadlock.c - two threads each need two locks, shows a deadlock and then the fix
 
-## Requirements
-- Linux environment (developed and tested on Ubuntu 24.04)
-- gcc compiler
-- pthread library (included with gcc on Linux by default)
+## How to compile and run
 
-## How to compile
+Each file is separate. Example for file 1:
 
 ```bash
-gcc scheduler.c -o scheduler -lpthread
+gcc 1_threads.c -o 1_threads -lpthread
+./1_threads
 ```
 
-## How to run
+Same pattern for the others (2, 3, 5 also need -lpthread, file 4 does not since it has no threads).
+
+For 5_deadlock.c, run it with timeout so it doesn't hang forever if it deadlocks:
 
 ```bash
-./scheduler
+timeout 5 ./5_deadlock
 ```
 
-## Expected output
-The program will:
-1. Print each thread claiming and completing tasks in strict round-robin order
-   (Thread 0, 1, 2, 0, 1, 2, ...) until all 9 tasks are completed.
-2. Then run the deadlock prevention demo, showing both threads successfully
-   acquiring both mutexes and completing without any deadlock or timeout.
+To switch between the unsafe (deadlock) and safe (fixed) version, open 5_deadlock.c and comment/uncomment this line at the top:
 
-## Development history
-This program was built incrementally across 5 stages, each demonstrating one
-concept in isolation before being combined into the final version above:
-1. Basic thread creation
-2. Race condition demonstration (unprotected shared counter)
-3. Race condition fix (mutex)
-4. Round-robin scheduler simulation (standalone)
-5. Deadlock demonstration and prevention (consistent lock ordering)
+```c
+// #define SAFE 1
+```
 
-Full details of each stage, including reasoning and test results, are in
-`notes.md`. Screenshots of program output at each stage are in `screenshots/`.
-The complete commit history is available in the project's git log.
+## Notes
+
+See notes.md for what each file does and what the results were.
+Screenshots of the output are in the screenshots folder.
