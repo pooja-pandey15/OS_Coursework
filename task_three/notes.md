@@ -11,3 +11,7 @@ Basic file operations: create, write, read, delete.
 Used fopen with "w" to create and write a note, fopen with "r" to read it back, then remove() to delete it.
 Tested by typing a note, it saved correctly, read back correctly, then deleted successfully.
 
+## 3_permissions.c
+Created a file and used chmod to set permission: only owner can read/write, no access for group or others.
+Used stat to check the permission bits and print them out.
+Confirmed with ls -l that Linux shows the same permission (-rw-------).
