@@ -25,3 +25,9 @@ Tested with "bank password is 5566" - encrypted text was unreadable,
  decrypted text matched the original exactly.
 This is a simple demonstration, not real-world secure encryption,
  but shows the basic idea of protecting sensitive file content.
+
+## 5_audit_log.c
+Logs each file action to audit.log with a timestamp, using time() and ctime().
+Used "a" (append) mode so new logs don't erase old ones.
+Tested with 4 simulated actions (login, create, read, delete) - all logged correctly with timestamps, and could be read back from the log file.
+This is useful for security since it keeps a record of who accessed or changed files and when.
