@@ -13,3 +13,11 @@ Each client gets a reply with its own job number (Job 1, Job 2, Job 3).
 Tested by running the client program 3 separate times while the server was running - all 3 were handled correctly and the server closed itself after the 3rd one.
 This shows a server can serve more than one client, just handled one at a time here to keep it simple.
 
+## 4_auth_check.c and 5_auth_client.c
+Added a login step before the server accepts a print job.
+Client sends username:password, server checks if it matches pooja:1234.
+If correct, server allows the client to send a job and confirms it.
+If wrong, server sends "Login failed" and closes the connection without accepting any job.
+Tested both cases - correct login worked and job was queued, wrong login was rejected and no job was sent.
+This is basic security so random clients can't send jobs to the printer without valid credentials.
+
